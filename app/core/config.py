@@ -90,7 +90,11 @@ class Settings(BaseSettings):
     )
 
     MFA_ISSUER_NAME: str = Field(
-        default="Auth Service", description="MFA TOTP issuer name"
+        default="BRX Auth",
+        description=(
+            "Issuer label in TOTP apps (Google Authenticator, Microsoft Authenticator, "
+            "etc.) next to the account entry; override with env MFA_ISSUER_NAME"
+        ),
     )
 
     @field_validator("DATABASE_URL")

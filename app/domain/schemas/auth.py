@@ -116,9 +116,9 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     """
-    User login request.
-    Contains hidden honeypot field 'website_url' to detect bots.
-    If this field is filled, the request should be silently rejected.
+    User login. If TOTP MFA (e.g. Google Authenticator) is enabled, the response is
+    PreAuthTokenResponse instead of TokenResponse; complete login via POST /verify-mfa.
+    Honeypot: empty website_url or request is rejected.
     """
 
     email: EmailStr = Field(..., description="User email address")
@@ -145,11 +145,17 @@ class LoginRequest(BaseModel):
 
 
 class VerifyMFARequest(BaseModel):
-    """MFA verification request (used after PRE_AUTH token)."""
+    """Complete login after MFA: send PRE_AUTH from login plus 6-digit code from Google Authenticator (or any TOTP app)."""
 
-    pre_auth_token: str = Field(..., description="PRE_AUTH token from login")
+    pre_auth_token: str = Field(
+        ...,
+        description="Temporary PRE_AUTH JWT returned by POST /login when MFA is enabled",
+    )
     mfa_code: str = Field(
-        ..., min_length=6, max_length=6, description="6-digit TOTP code"
+        ...,
+        min_length=6,
+        max_length=6,
+        description="Current 6-digit TOTP code from Google Authenticator or another compatible app",
     )
 
     @field_validator("mfa_code")
@@ -211,7 +217,7 @@ class ChangePasswordRequest(BaseModel):
 
 
 class EnableMFARequest(BaseModel):
-    """Request to enable MFA (returns QR code secret)."""
+    """Start MFA setup: returns QR and secret to scan or type into Google Authenticator (or any TOTP app)."""
 
     pass  # No input needed, returns QR code
 
@@ -252,12 +258,16 @@ class TokenResponse(BaseModel):
 
 
 class PreAuthTokenResponse(BaseModel):
-    """PRE_AUTH token response (when MFA is enabled)."""
+    """Returned when the user has TOTP MFA on: call POST /verify-mfa with this token and the app code."""
 
     pre_auth_token: str = Field(
-        ..., description="Temporary token for MFA verification"
+        ...,
+        description="Short-lived JWT; use with POST /verify-mfa and 6-digit TOTP code (not a full session token)",
     )
-    mfa_required: bool = Field(default=True, description="MFA verification required")
+    mfa_required: bool = Field(
+        default=True,
+        description="True when second step is required (enter code from Google Authenticator or compatible app)",
+    )
 
     class Config:
         json_schema_extra = {
@@ -343,10 +353,16 @@ class UserResponse(BaseModel):
 
 
 class MFAQRCodeResponse(BaseModel):
-    """MFA QR code setup response."""
+    """Scan the QR in Google Authenticator (or enter the secret manually) then confirm via POST /mfa/verify."""
 
-    qr_code_url: str = Field(..., description="QR code data URL for TOTP app")
-    secret: str = Field(..., description="MFA secret (for manual entry)")
+    qr_code_url: str = Field(
+        ...,
+        description="PNG data URL; scan with Google Authenticator or another TOTP app to register this account",
+    )
+    secret: str = Field(
+        ...,
+        description="Base32 secret for manual entry if the user cannot scan the QR code",
+    )
 
     class Config:
         json_schema_extra = {

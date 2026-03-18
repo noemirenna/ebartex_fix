@@ -68,7 +68,15 @@ async def register(
         raise AuthenticationError("Invalid credentials")
 
 
-@router.post("/login", response_model=TokenResponse | PreAuthTokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse | PreAuthTokenResponse,
+    summary="Login",
+    description=(
+        "Returns access+refresh tokens, or pre_auth_token+mfa_required when the user has "
+        "TOTP MFA (Google Authenticator, etc.); then call POST /verify-mfa."
+    ),
+)
 async def login_endpoint(
     request: LoginRequest,
     background_tasks: BackgroundTasks,
@@ -176,7 +184,12 @@ async def change_password_endpoint(
     return MessageResponse(message="Password changed successfully")
 
 
-@router.post("/mfa/enable", response_model=MFAQRCodeResponse)
+@router.post(
+    "/mfa/enable",
+    response_model=MFAQRCodeResponse,
+    summary="Start MFA setup (QR for Google Authenticator)",
+    description="Returns QR image and secret; user scans or enters in a TOTP app, then confirms via POST /mfa/verify.",
+)
 async def enable_mfa_endpoint(
     request: EnableMFARequest,
     current_user: User = Depends(get_current_user),
@@ -203,7 +216,12 @@ async def verify_mfa_setup_endpoint(
     return MessageResponse(message="MFA enabled successfully")
 
 
-@router.post("/mfa/disable", response_model=MessageResponse)
+@router.post(
+    "/mfa/disable",
+    response_model=MessageResponse,
+    summary="Disable TOTP MFA",
+    description="Turn off Google Authenticator / TOTP for this account (password required).",
+)
 async def disable_mfa_endpoint(
     request: DisableMFARequest,
     background_tasks: BackgroundTasks,

@@ -6,7 +6,7 @@ Enterprise-grade authentication microservice built with Python FastAPI, PostgreS
 
 - **JWT RS256 Authentication** - Asymmetric key-based JWT tokens
 - **Argon2id Password Hashing** - Industry-standard password security
-- **MFA (TOTP)** - Time-based one-time passwords with QR code setup
+- **MFA (TOTP)** - Compatible with **Google Authenticator** and any standard TOTP app (Microsoft Authenticator, Authy, etc.); QR setup and 6-digit codes at login
 - **Rate Limiting** - Redis-backed Token Bucket algorithm with fail-closed for critical endpoints
 - **Audit Logging** - Comprehensive security event logging
 - **Anti-Bot Protection** - Honeypot fields in registration/login
@@ -144,6 +144,7 @@ See `.env.example` for all required environment variables.
 - `REDIS_URL` - Redis connection URL
 - `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` - RS256 key pair
 - `FERNET_KEY` - Fernet encryption key for MFA secrets
+- `MFA_ISSUER_NAME` - Label shown next to the account in Google Authenticator (and similar apps); default `BRX Auth`
 
 ### AWS SSM Integration
 
