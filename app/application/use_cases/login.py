@@ -32,7 +32,10 @@ async def login_user(
         raise AuthenticationError("Invalid credentials")
 
     user_repo = UserRepository(session)
-    user = await user_repo.get_by_email(request.email)
+    if request.email is not None:
+        user = await user_repo.get_by_email(request.email)
+    else:
+        user = await user_repo.get_by_username(request.username)
 
     if user:
         if user.account_status == AccountStatusEnum.LOCKED:

@@ -23,6 +23,7 @@ class RateLimitService:
             "/login": 5,
             "/verify-mfa": 5,
             "/register": 3,
+            "/api/auth/username-available": 40,
         }
 
     async def check_rate_limit(

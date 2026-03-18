@@ -49,7 +49,7 @@ class RegisterRequest(BaseModel):
     def validate_username(cls, v: str) -> str:
         if not re.match(r"^[a-zA-Z0-9_]{3,20}$", v):
             raise ValueError("Username must be 3-20 characters, alphanumeric and underscore only")
-        return v
+        return v.lower()
 
     @field_validator("password")
     @classmethod
@@ -116,18 +116,60 @@ class RegisterRequest(BaseModel):
 
 class LoginRequest(BaseModel):
     """
-    User login. If TOTP MFA (e.g. Google Authenticator) is enabled, the response is
-    PreAuthTokenResponse instead of TokenResponse; complete login via POST /verify-mfa.
+    User login. Provide exactly one of email or username.
+    If TOTP MFA is enabled, response is PreAuthTokenResponse; complete via POST /verify-mfa.
     Honeypot: empty website_url or request is rejected.
     """
 
-    email: EmailStr = Field(..., description="User email address")
+    email: Optional[EmailStr] = Field(
+        default=None,
+        description="Login with email (mutually exclusive with username)",
+    )
+    username: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=20,
+        description="Login with username (mutually exclusive with email)",
+    )
     password: str = Field(..., description="User password")
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def email_empty_to_none(cls, v):
+        if v is None or (isinstance(v, str) and not str(v).strip()):
+            return None
+        return v
+
+    @field_validator("username", mode="before")
+    @classmethod
+    def username_empty_to_none(cls, v):
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return v.strip() if isinstance(v, str) else v
 
     @field_validator("email")
     @classmethod
-    def normalize_email_lower(cls, v: str) -> str:
+    def normalize_email_lower(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        return str(v).lower()
+
+    @field_validator("username")
+    @classmethod
+    def normalize_login_username_lower(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
         return v.lower()
+
+    @model_validator(mode="after")
+    def require_email_or_username(self):
+        has_email = self.email is not None
+        has_username = self.username is not None
+        if has_email and has_username:
+            raise ValueError("Provide either email or username, not both")
+        if not has_email and not has_username:
+            raise ValueError("Provide email or username")
+        return self
 
     # HONEYPOT FIELD - Hidden from UI, bots will fill it
     website_url: Optional[str] = Field(
@@ -142,6 +184,23 @@ class LoginRequest(BaseModel):
                 "password": "SecurePassword123!",
             }
         }
+
+
+class UsernameAvailabilityResponse(BaseModel):
+    """Username availability check for registration (GET /username-available)."""
+
+    available: bool = Field(
+        ...,
+        description="True if normalized username is free to register",
+    )
+    normalized_username: str = Field(
+        ...,
+        description="Username after trim+lowercase (stored value on register)",
+    )
+    valid_format: bool = Field(
+        ...,
+        description="False if input does not match registration rules (3-20, alphanumeric+underscore)",
+    )
 
 
 class VerifyMFARequest(BaseModel):

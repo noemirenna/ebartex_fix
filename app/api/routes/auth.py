@@ -23,12 +23,14 @@ from app.domain.schemas.auth import (
     TokenResponse,
     UserPreferenceResponse,
     UserResponse,
+    UsernameAvailabilityResponse,
     VerifyMFARequest,
 )
 from app.infrastructure.database.connection import get_db_session
 from app.infrastructure.database.models import User
 from app.application.use_cases import (
     change_password as change_password_uc,
+    check_username as check_username_uc,
     disable_mfa as disable_mfa_uc,
     enable_mfa as enable_mfa_uc,
     login as login_uc,
@@ -68,11 +70,28 @@ async def register(
         raise AuthenticationError("Invalid credentials")
 
 
+@router.get(
+    "/username-available",
+    response_model=UsernameAvailabilityResponse,
+    summary="Check username availability",
+    description=(
+        "Returns whether the username matches registration rules (valid_format) and is not "
+        "already taken (available). normalized_username is the stored form (lowercase)."
+    ),
+)
+async def username_available(
+    username: str,
+    db: AsyncSession = Depends(get_db_session),
+) -> UsernameAvailabilityResponse:
+    return await check_username_uc.check_username_availability(db, username)
+
+
 @router.post(
     "/login",
     response_model=TokenResponse | PreAuthTokenResponse,
     summary="Login",
     description=(
+        "Send exactly one of email or username, plus password. "
         "Returns access+refresh tokens, or pre_auth_token+mfa_required when the user has "
         "TOTP MFA (Google Authenticator, etc.); then call POST /verify-mfa."
     ),

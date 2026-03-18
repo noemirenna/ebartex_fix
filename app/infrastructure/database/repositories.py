@@ -80,8 +80,11 @@ class UserRepository:
         return result.scalar_one_or_none()
 
     async def get_by_username(self, username: str) -> Optional[User]:
+        """Case-insensitive match (usernames stored lowercase)."""
         result = await self.session.execute(
-            select(User).where(User.username == username)
+            select(User)
+            .where(func.lower(User.username) == username.lower())
+            .limit(1)
         )
         return result.scalar_one_or_none()
 

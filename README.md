@@ -92,13 +92,20 @@ Enterprise-grade authentication microservice built with Python FastAPI, PostgreS
 
 ### Authentication
 
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login (returns PRE_AUTH if MFA enabled)
+- `POST /api/auth/register` - Register new user (username stored **lowercase**, unique case-insensitive)
+- `GET /api/auth/username-available?username=...` - Check if username is valid format and available
+- `POST /api/auth/login` - Login with **either** `email` **or** `username` (not both), plus `password` (returns PRE_AUTH if MFA enabled)
 - `POST /api/auth/verify-mfa` - Verify MFA code
 - `POST /api/auth/refresh` - Refresh access token
 - `POST /api/auth/logout` - Logout and revoke session
 - `POST /api/auth/change-password` - Change password (requires auth)
 - `GET /api/auth/me` - Get current user info (requires auth)
+
+**Login body examples:** `{ "email": "user@example.com", "password": "..." }` or `{ "username": "myuser", "password": "..." }`.
+
+**Username check response:** `valid_format` (matches 3–20 alphanumeric+underscore), `normalized_username` (lowercase), `available` (not already registered).
+
+**Legacy DB (optional):** If you have old users with non-lowercase `username`, run `UPDATE users SET username = lower(username)` after resolving any case-only duplicates.
 
 ### MFA
 
@@ -119,7 +126,7 @@ Enterprise-grade authentication microservice built with Python FastAPI, PostgreS
 - **Token Bucket Algorithm** - Redis-backed rate limiting
 - **Fail-Closed** - Critical endpoints (`/login`, `/verify-mfa`) fail if Redis is unavailable
 - **Per-IP Tracking** - Rate limits applied per client IP
-- **Configurable Limits** - Different limits per endpoint
+- **Configurable Limits** - Different limits per endpoint (including `GET /api/auth/username-available`, 40/min per IP)
 
 ### Honeypot Protection
 
