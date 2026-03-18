@@ -49,3 +49,5 @@ public_key*
 
 # Alembic (keep versions, ignore compiled)
 alembic/versions/__pycache__/
+
+.env.example
